@@ -1,0 +1,106 @@
+
+==== IS-IS Discovery
+
+IS-IS links are found walking the isisISAdjTable that is defined in ISIS-MIB, (mib-rfc4444.txt) in standard mibs under Juniper junos supported Mib tree.
+In this table you got the information you need to find the Adjency Intermediate System.
+The information about Is-Is is stored into two tables: isisElement and isisLink.
+isisElement contains the ISISSysID a unique identifier of the "Intermediate System" (that is the name for the Router in iso protocols).
+Each entry in this table (snmp) represents a link, let me say, a one direction link from the Intermediate system that is queried to the Adj Intermediate systems running IS-IS and "let me say" peering with the source router.
+If two routers let me say IS-A and IS-B support ISIS-MIB you will find two entries in opennms, one that is the direction from IS-A to IS-B get walking IS-A adjTable and the way back from IS-B to IS-A.
+get walking IS-B adjTable
+Here you find the definition of the tables in our database:
+
+[source, sql]
+----
+opennms=# \d isiselement
+Table "public.isiselement"
+Column | Type | Modifiers
+------------------------------------------------------------------------------------------------
+id | integer | not null default nextval('opennmsnxtid'::regclass)
+nodeid | integer | not null
+isissysid | character varying(32) | not null
+isissysadminstate | integer | not null
+isisnodecreatetime | timestamp with time zone | not null
+isisnodelastpolltime | timestamp with time zone | not null
+Indexes:
+"pk_isiselement" PRIMARY KEY, btree (id)
+"isiselement_nodeid_idx" btree (nodeid)
+"isiselement_sysid_idx" btree (isissysid)
+Foreign-key constraints:
+"fk_isiselement_nodeid" FOREIGN KEY (nodeid) REFERENCES node(nodeid) ON DELETE CASCADE
+and
+opennms=# \d isislink
+Table "public.isislink"
+Column | Type | Modifiers
+------------------------------------------------------------------------------------------------------
+id | integer | not null default nextval('opennmsnxtid'::regclass)
+nodeid | integer | not null
+isiscircindex | integer | not null
+isisisadjindex | integer | not null
+isiscircifindex | integer |
+isiscircadminstate | integer |
+isisisadjstate | integer | not null
+isisisadjneighsnpaaddress | character varying(80) | not null
+isisisadjneighsysyype | integer | not null
+isisisadjneighsysid | character varying(32) | not null
+isisisadjnbrextendedcircid | integer | not null
+isislinkcreatetime | timestamp with time zone | not null
+isislinklastpolltime | timestamp with time zone | not null
+Indexes:
+"pk_isislink" PRIMARY KEY, btree (id)
+"isislink_lastpoll_idx" btree (isislinklastpolltime)
+"isislink_nodeid_idx" btree (nodeid)
+"isislink_pk_idx" btree (nodeid, isiscircindex, isisisadjindex)
+----
+
+Foreign-key constraints:
+[source, sql]
+----
+"fk_isislink_nodeid" FOREIGN KEY (nodeid) REFERENCES node(nodeid) ON DELETE CASCADE
+----
+
+As usual in the case in which both nodes belong to opennms and have persisted data regarding IS-IS the links can be found using the join of isislink with herselves but with a more join to get the nodeid, In particular the identification of the link is made using the isisISAdjNeighSysID and also using the following index: isisISAdjIndex that is share across the Adjencies.
+Let's start with the following query:
+
+[source, sql]
+----
+select * from isislink l1 left join isiselement e on l1.isisisadjneighsysid = e.isissysid;
+----
+
+In this way you are able to get the "nodeid" of the Adjency Intermediate System, how to get the other link....just joining once more on isislink:
+
+[source, sql]
+----
+select * from isislink l1 left join isiselement e on l1.isisisadjneighsysid = e.isissysid left join isislink l2 on e.nodeid=l2.nodeid where l1.isisisadjindex = l2.isisisadjindex;
+----
+
+The only other information needed is that in the case of isislink we have the ifIndex stored in the isiscircifindex row.
+With the previous query you are able to get both nodeid and ifindex for the source node and the Adj node.
+Another way to find links is considering the following field: isisisadjneighsnpaaddress this is the "mac address" of the received frame.
+IS-IS is a layer2 encapsulated protocol. So this field represents the source address of the received IS-IS frame and identify the interface that has send the IS-IS datagram.
+So another option could be the following to get links:
+
+[source, sql]
+----
+select * from isislink l1 left join snmpinterface s1 on l1.isisisadjneighsnpaaddress = s1.snmpphysaddr
+----
+
+Let's go to how is possible to monitor links....well, in each entry (row) of the isislink table you have the isiscircifindex and this will give you the ability to set the link state using the snmp_link_up/snmp_link_down traps defined in IP-MIB.
+More into the ISIS-MIB there are several traps defined that are very useful to monitor IS-IS protocol. One could also be used to get the Adj status and then the status of the link:
+
+[source]
+----
+isisAdjacencyChange NOTIFICATION-TYPE
+OBJECTS
+{ isisNotificationSysLevelIndex, isisNotificationCircIfIndex, isisPduLspId, isisAdjState }
+STATUS current
+DESCRIPTION
+"A notification sent when an adjacency changes
+state, entering or leaving state up.
+The first 6 bytes of the isisPduLspId are the
+SystemID of the adjacent IS.
+The isisAdjState is the new state of the adjacency."
+::=
+{ isisNotifications 17 }
+In the varbind you also get isisNotificationCircIfIndex, this is aved in isisLink table so you should immediatly update the information you got from the trap into the database/opennms system.
+----

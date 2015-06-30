@@ -1,0 +1,98 @@
+
+==== OSPF Discovery
+
+The relevant MIB for OSPF topology are OSPF-MIB and OSPF-TRAP-MIB, supported by junos, and usually available with junos mib distribution under standardMib as mib-ospf2mib.txt and mib-ospf2trap.txt.
+In this mib are defined the relevant object to be used to find ospf links.
+In particular consider that
+
+* The Router ID, in OSPF, has the same format as an IP Address,
+* but identifies the router independent of its IP Address.
+
+Also all the interfaces are identified by the ip address.
+The Ospf links comes from the router ospfNbrTable defined in OSPF-MIB and this table is in practice persisted in ospflink table:
+
+[source, sql]
+----
+opennms=# \d ospflink
+Table "public.ospflink"
+Column | Type | Modifiers
+---------------------------------------------------------------------------------------------------
+id | integer | not null default nextval('opennmsnxtid'::regclass)
+nodeid | integer | not null
+ospfipaddr | character varying(16) |
+ospfipmask | character varying(16) |
+ospfaddresslessindex | integer |
+ospfifindex | integer |
+ospfremrouterid | character varying(16) | not null
+ospfremipaddr | character varying(16) | not null
+ospfremaddresslessindex | integer | not null
+ospflinkcreatetime | timestamp with time zone | not null
+ospflinklastpolltime | timestamp with time zone | not null
+----
+
+You see that the linked router is identified by ospfremrouterid and the corresponding interface by ospfremipaddr/ospfremaddresslessindex.
+If you consider the following link routerA:10.10.10.1/30 <------------->10.10.10.2/30:routerB you have to consider that you have two entries in ospflink, one corresponding to a walk of ospfNbrTable on routerA and one corresponding to ospfnbrTable routerB.
+Also you can consider that the ospfifindex is available only for routerA.
+How to get the full link informations ie also the ospfifindex of the remipaddress, simply joining ospflink with itself:
+
+[source, sql]
+----
+select * from ospflink a left join ospflink b on a.ospfipaddr = b.ospfremipaddr;
+----
+
+consider that you usually have two links...let me say..from A to B and from B to A.
+This in consideration that both nodes are provided to opennms and also that both support OSPF-MIB and finally that both have been walked at least once.
+To check the status of Ospf link usually you can check the linkUp/LinkDown traps defined in IF-MIB (mib-rfc2863a.txt) that both carry in varbind the ifindex.
+To have a better definition of the status of the ospf link you can check the OSPF-TRAP-MIB, in particular you can also check:
+
+[source]
+----
+ospfIfStateChange NOTIFICATION-TYPE
+OBJECTS
+{ ospfRouterId, -- The originator of the trap ospfIfIpAddress, ospfAddressLessIf, ospfIfState -- The new state }
+STATUS current
+DESCRIPTION
+"An ospfIfStateChange trap signifies that there
+has been a change in the state of a non-virtual
+OSPF interface. This trap should be generated
+when the interface state regresses (e.g., goes
+from Dr to Down) or progresses to a terminal
+state (i.e., Point-to-Point, DR Other, Dr, or
+Backup)."
+ospfNbrStateChange NOTIFICATION-TYPE
+OBJECTS
+{ ospfRouterId, -- The originator of the trap ospfNbrIpAddr, ospfNbrAddressLessIndex, ospfNbrRtrId, ospfNbrState -- The new state }
+STATUS current
+DESCRIPTION
+"An ospfNbrStateChange trap signifies that
+there has been a change in the state of a non-
+virtual OSPF neighbor. This trap should be
+generated when the neighbor state regresses
+(e.g., goes from Attempt or Full to 1-Way or
+Down) or progresses to a terminal state (e.g.,
+2-Way or Full). When an neighbor transitions
+from or to Full on non-broadcast multi-access
+and broadcast networks, the trap should be gen-
+erated by the designated router. A designated
+router transitioning to Down will be noted by
+ospfIfStateChange."
+::=
+{ ospfTraps 2 }
+----
+
+both traps use the ipaddress to identify the interface.
+Finally let me try to consider the following use case: routerA is provided in opennms, supports OSPF-MIB
+Any of this:
+
+. routerB is not provided in opennms
+. routerB does not support OSPF-MIB
+. routerB has not been walked by enhanced linkd.
+
+In this case you got only one link and no ifindex association to routerB.
+If routerB is provided into opennms and does not support OSPF you can in any case got the ifindex accessing the ipinterface table.
+So another option could be:
+
+[source, sql]
+----
+select * from ospflink a left join ipinterface b on b.ipaddr = a.ospfremipaddr;
+----

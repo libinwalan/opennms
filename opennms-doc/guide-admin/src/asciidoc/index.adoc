@@ -98,3 +98,8 @@ include::text/provisioning.adoc[]
 // Enhanced Linkd documentation
 == Enhanced Linkd
 include::text/enlinkd/topology-discovery.adoc[]
+include::text/enlinkd/bridge-discovery.adoc[]
+include::text/enlinkd/lldp-discovery.adoc[]
+include::text/enlinkd/cdp-discovery.adoc[]
+include::text/enlinkd/ospf-discovery.adoc[]
+include::text/enlinkd/is-is-discovery.adoc[]

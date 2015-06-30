@@ -1,0 +1,95 @@
+
+==== Bridge Discovery
+
+The links from the bridge forwarding table elaborations needs a deep explanation.
+First of all you should consider that the transparent bridge has only local map of the network:
+it acts in such a manner, if I got a frame whose sorce mac address is for example '00aabb11ccdd' on port 10 then I put an entry in my table for that mac address on that port so that when I got a frame with destination mac address '00aabb11ccdd' I know that I have to forward it on port 10.
+Transparent bridging is not loop free so if you have loops you have to enable the spanning tree protocol that will detect loops and again will put some port in a state "blocking" to avoid loops.
+There is no link state algorithm like OSPF. So to get links you need to perform some calculations that let you find the links.
+We can consider that mainly we have links between a workstation or server (identified by a mac address) and links beetween bridges.
+We call them macLink and the others bridgeLink. A bridgeLink is a "connection" between backbone ports.
+So we have written a code that is able to identify backbone ports and then able to associate mac address to the source port on source bridge where it was originaly learned.
+So you have to consider the following, at the end the algorithm is able to make an association of bridge port with a set of "source mac addresses" as it understand that they are all connected to that port. By the nature of the algorithm it is possible that we can have this set of mac addresses associated to more then one bridgeport: this is understable especially considering that we can "miss" a device in the middle. In this case we save set of mac addresses for all the bridge port addressing to them.
+So to get links you must first of all get the backbone links between bridges, these are saved into bridgeBridgeLink table.
+
+[source, sql]
+----
+opennms=# opennms=# \d bridgebridgelink
+Table "public.bridgebridgelink"
+Column | Type | Modifiers
+--------------------------------------------------------------------------------------------------------
+id | integer | not null default nextval('opennmsnxtid'::regclass)
+nodeid | integer | not null
+bridgeport | integer |
+bridgeportifindex | integer |
+bridgeportifname | character varying(32) |
+vlan | integer |
+designatednodeid | integer | not null
+designatedbridgeport | integer |
+designatedbridgeportifindex | integer |
+designatedbridgeportifname | character varying(32) |
+designatedvlan | integer |
+bridgebridgelinkcreatetime | timestamp with time zone | not null
+bridgebridgelinklastpolltime | timestamp with time zone | not null
+Indexes:
+"pk_bridgebridgelink" PRIMARY KEY, btree (id)
+"bridgebridgelink_lastpoll_idx" btree (bridgebridgelinklastpolltime)
+"bridgebridgelink_nodeid_idx" btree (nodeid)
+"bridgebridgelink_pk_idx" btree (nodeid, bridgeport)
+Foreign-key constraints:
+"fk_bridgebridgelink_designatednodeid" FOREIGN KEY (designatednodeid) REFERENCES node(nodeid) ON DELETE CASCADE
+"fk_bridgebridgelink_nodeid" FOREIGN KEY (nodeid) REFERENCES node(nodeid) ON DELETE CASCADE
+These links are saved as one direction link from node to designated node.
+the quety here is simply:
+select * from bridgebridgelink;
+Once you got the backbone links you must get the mac links. This are saved in the database table bridgeMacLink
+opennms=# \d bridgeMacLink
+Table "public.bridgemaclink"
+Column | Type | Modifiers
+-----------------------------------------------------------------------------------------------------
+id | integer | not null default nextval('opennmsnxtid'::regclass)
+nodeid | integer | not null
+bridgeport | integer | not null
+bridgeportifindex | integer |
+bridgeportifname | character varying(32) |
+vlan | integer |
+macaddress | character varying(12) | not null
+bridgemaclinkcreatetime | timestamp with time zone | not null
+bridgemaclinklastpolltime | timestamp with time zone | not null
+Indexes:
+"pk_bridgemaclink" PRIMARY KEY, btree (id)
+"bridgemaclink_lastpoll_idx" btree (bridgemaclinklastpolltime)
+"bridgemaclink_nodeid_idx" btree (nodeid)
+"bridgemaclink_pk_idx1" btree (nodeid, bridgeport)
+"bridgemaclink_pk_idx2" btree (macaddress)
+Foreign-key constraints:
+"fk_bridgemaclink_nodeid" FOREIGN KEY (nodeid) REFERENCES node(nodeid) ON DELETE CASCADE
+It is important to understand that the association is only with mac address and not with node. In openNMS we indentify node with ip address so we need to join this table with another table which holds tha ipnettomedia informations. So we have an association from bridgeport to mac address and hopefully the associated ip address, we still need to join on ipinterface to get the associated nodeid so the query should be the following
+select mlink.*, ip.nodeid as targetnodeid from bridgemaclink as mlink left join ipnettomedia as ntm on mlink.macaddress = ntm.physaddress left join ipinterface ip on ip.ipaddr = ntm.netaddress;
+This select is simple but this works in the assumption that there are no duplicated ip addresses and mac addresses too. This is not what happens in real network, where I found in my experience a lot of duplicated ip addresses and also mac addresses.
+Here is the way in which we have the ipnettomedia table defined:
+opennms=# \d ipnettomedia
+Table "public.ipnettomedia"
+Column | Type | Modifiers
+-----------------------------------------------------------------------------------------
+id | integer | not null default nextval('opennmsnxtid'::regclass)
+netaddress | text | not null
+physaddress | character varying(32) | not null
+sourcenodeid | integer | not null
+sourceifindex | integer | not null
+createtime | timestamp with time zone | not null
+lastpolltime | timestamp with time zone | not null
+Indexes:
+"pk_ipnettomedia" PRIMARY KEY, btree (id)
+"ipnettomedia_lastpoll_idx" btree (lastpolltime)
+"ipnettomedia_nodeid_idx" btree (sourcenodeid)
+"ipnettomedia_pk_idx" btree (netaddress, physaddress)
+----
+
+[source, sql]
+----
+Foreign-key constraints:
+"fk_ipnettomedia_sourcenodeid" FOREIGN KEY (sourcenodeid) REFERENCES node(nodeid) ON DELETE CASCADE
+----
+
+Duplicated ipaddress or d uplicated mac address will lead with this query to fake links.
