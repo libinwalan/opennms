@@ -1,0 +1,30 @@
+
+=== Topology Discovery
+
+Enhanced Linkd (enlinkd) has been designed to get a snapshot of the neighbors from the device point of view.
+Essentially it asks each device the following question: "What is the network topology from your point of view".
+From this point of view this will only provide local topology discovery features.
+It does not attempt to discover global topology or doing any correlation with the data coming from other nodes.
+
+Actually it supports linkd discovery for the following protocols:
+
+* Layer 2 protocols LLDP, CDP and transparent bridge discovery
+* Layer 3 protocols OSPF and IS-IS
+
+The general strategy it does its work is walk SNMP data and persist data into the OpenNMS database table.
+There is a 1:1 relation between SNMP scalars and tables with database tables.
+We adapt a strictly walk and persist strategy.
+
+==== LLDP Discovery
+
+==== CDP Discovery
+
+==== Bridge Discovery
+
+==== OSPF Discovery
+
+==== IS-IS Discovery
+
+==== Configuring enlinkd
+
+==== User checklist / Troubleshooting

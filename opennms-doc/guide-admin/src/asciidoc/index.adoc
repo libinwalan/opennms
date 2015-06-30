@@ -94,3 +94,7 @@ include::text/events.adoc[]
 
 // Provisioning guide
 include::text/provisioning.adoc[]
+
+// Enhanced Linkd documentation
+== Enhanced Linkd
+include::text/enlinkd/topology-discovery.adoc[]
