@@ -18,23 +18,6 @@ We adapt a strictly walk and persist strategy.
 
 .To review
 
-Juniper has asked for the ability to immediately do a linkd scan of a device after it has been added to the system so that once they add a device it shows up in their GUIs more quickly.
-
-I am not certain if this is a good idea but I was wondering if there would be a problem with doing something like this and running the schedule for this node immediately on add?
-
-
-The point is the following, when you add a node in opennms, linkd gets the Snmp serviceGained event and schedule the node for the snmp data collection with a schedule interval that is
- the “initial_sleep_time”. So the point is that we can do this using a suitable configuration!
-
-Can you foresee any problems with this?
-
-I think that the most important problem is that we are not able doing the scan to see the links, we just perform the data collection on the mode that will be used for
- finding the links….i.e. we should move to the following use case:
-
- Juniper wants to discovery links on a device as soon as possible, let me say contestually to the node provisioning into opennms.
-
- I have spent some time, so here is what I can say in my experience and understanding of the “topology network” discovery stuff.
-
  So I’m going to discuss first of all about this "use case” in general and then try to put this into the actual opennms context.
 
  1) Does have a meaning to scan a mode for immediate topology?
@@ -67,7 +50,7 @@ I think that the most important problem is that we are not able doing the scan t
 
    I think that this must be cleared to the customer.
 
- 2) discovery soon “local topology”  and opennms linkd
+ 2) discovery soon "local topology"  and opennms linkd
 
     the design of linkd is for getting a global topology. The information of the node “local topology” are
     saved in memory and used when all the local topologies have been discovered to get the “global topology”.
@@ -82,7 +65,7 @@ I think that the most important problem is that we are not able doing the scan t
 
 
 
-3) discovery “local topology” and opennms enhanced linkd
+3) discovery "local topology" and opennms enhanced linkd
 
     The design of enhanced linkd is very “local topology” oriented, so it try to walk and persist the data in one shot.
     So in my opinion this is what we should work on. We just need to finish the persisting (I have now a clear understanding of what is needed and what to do),

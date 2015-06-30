@@ -84,10 +84,6 @@ Indexes:
 "ipnettomedia_lastpoll_idx" btree (lastpolltime)
 "ipnettomedia_nodeid_idx" btree (sourcenodeid)
 "ipnettomedia_pk_idx" btree (netaddress, physaddress)
-----
-
-[source, sql]
-----
 Foreign-key constraints:
 "fk_ipnettomedia_sourcenodeid" FOREIGN KEY (sourcenodeid) REFERENCES node(nodeid) ON DELETE CASCADE
 ----
