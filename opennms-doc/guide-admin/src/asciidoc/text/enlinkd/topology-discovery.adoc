@@ -15,6 +15,87 @@ The general strategy it does its work is walk SNMP data and persist data into th
 There is a 1:1 relation between SNMP scalars and tables with database tables.
 We adapt a strictly walk and persist strategy.
 
+
+.To review
+
+Juniper has asked for the ability to immediately do a linkd scan of a device after it has been added to the system so that once they add a device it shows up in their GUIs more quickly.
+
+I am not certain if this is a good idea but I was wondering if there would be a problem with doing something like this and running the schedule for this node immediately on add?
+
+
+The point is the following, when you add a node in opennms, linkd gets the Snmp serviceGained event and schedule the node for the snmp data collection with a schedule interval that is
+ the “initial_sleep_time”. So the point is that we can do this using a suitable configuration!
+
+Can you foresee any problems with this?
+
+I think that the most important problem is that we are not able doing the scan to see the links, we just perform the data collection on the mode that will be used for
+ finding the links….i.e. we should move to the following use case:
+
+ Juniper wants to discovery links on a device as soon as possible, let me say contestually to the node provisioning into opennms.
+
+ I have spent some time, so here is what I can say in my experience and understanding of the “topology network” discovery stuff.
+
+ So I’m going to discuss first of all about this "use case” in general and then try to put this into the actual opennms context.
+
+ 1) Does have a meaning to scan a mode for immediate topology?
+
+   Well, for protocols like CDP, LLDP, OSPF and IS-IS we have correspondng MIBS supporting a “nei table” which contains the device adjacency.
+   So it is clear that walking this tables we are able to get the links.
+
+   For that regards ip route discovery I can say the same, the nexthop router entry is a “direct link” to the node.
+
+    The STP protocol provides information about a “designate bridge” this gives you a clear information about the up element in the Tree.
+    Also the Bridge Forwarding Table gives you the network topology from the device perspective.
+    Here we understand that we should distinguish between a “local topology” and a "global topology”
+
+    The local topology is the network topology seen by the mode it self. So It always is meaningfull asking the mode for “local topology”.
+
+    If you want to move from “local topology” or well let me say “single node topology” to a “not local topology” clearly at least we will have to
+    query more then the single node “local topology”.
+
+   So now we can say that doing an snmp collection on a node we are able to find his local topology.
+   In the case of CDP, LLDP, OSPF, IS-IS protocols for the nature of the protocols themselves, CDP and LLDP as layer 2 discovery protocols, and
+   OSPF Is-Is for being them Link State routine protocols (which means that the router itself has a map of the entire network), the local topology
+   is exaclty the “context topology” or “global topology”.
+
+   But we see that in the case of Bridge discovery the situation is different.
+
+   Reasonable the bridge itself is a designate bridge of one or more other bridges. So a bunch of mac addresses learned on a specific port that is
+   the local topology view could be simply a link to a down in the tree bridge in a global topology view.
+
+   This means that discovering global topology in the case of bridge discovery needs to be performed over all the bridges to be defined.
+
+   I think that this must be cleared to the customer.
+
+ 2) discovery soon “local topology”  and opennms linkd
+
+    the design of linkd is for getting a global topology. The information of the node “local topology” are
+    saved in memory and used when all the local topologies have been discovered to get the “global topology”.
+    IMO changing this is more or less impossible.
+    The main problem is the object model. We have a very poor object model there. We should move to anothe robject model
+     to support for local topology and well this has been done with enhanced linkd.
+     nevertheless some modification can be made at least for finding local links using CDP, LLDP, OSPF and IS-IS as they are walked
+     on node.
+     In any case the identification of what are the other nodeid if they exists is not immediate. CDP and OSPF node can discovered done because we can use some information coming
+     from the system table and ip address table of the devices (persisted during node scan into opennms database), but LLDP and IS-IS data is not stored into database.
+     Stp data is persisted. So it can be found.
+
+
+
+3) discovery “local topology” and opennms enhanced linkd
+
+    The design of enhanced linkd is very “local topology” oriented, so it try to walk and persist the data in one shot.
+    So in my opinion this is what we should work on. We just need to finish the persisting (I have now a clear understanding of what is needed and what to do),
+    and of course at least move all the running test on linkd to enhanced linkd.
+
+
+
+Hope this helps for a deeper discussion.
+We could have a call tomorrow if you think it can help.
+
+
 ==== Configuring enlinkd
 
 ==== User checklist / Troubleshooting
+
+Debug and logging is done in `$OPENNMS_HOME/logs/enlinkd.log`.
