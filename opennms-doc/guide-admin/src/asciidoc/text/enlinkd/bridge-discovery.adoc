@@ -5,12 +5,29 @@ The links from the bridge forwarding table elaborations needs a deep explanation
 First of all you should consider that the transparent bridge has only local map of the network:
 it acts in such a manner, if I got a frame whose sorce mac address is for example '00aabb11ccdd' on port 10 then I put an entry in my table for that mac address on that port so that when I got a frame with destination mac address '00aabb11ccdd' I know that I have to forward it on port 10.
 Transparent bridging is not loop free so if you have loops you have to enable the spanning tree protocol that will detect loops and again will put some port in a state "blocking" to avoid loops.
-There is no link state algorithm like OSPF. So to get links you need to perform some calculations that let you find the links.
-We can consider that mainly we have links between a workstation or server (identified by a mac address) and links beetween bridges.
+To get links you need to perform some calculations that let you find the links.
+We can consider that mainly we have links between a workstation or server (identified by a mac address) and links between bridges.
 We call them macLink and the others bridgeLink. A bridgeLink is a "connection" between backbone ports.
-So we have written a code that is able to identify backbone ports and then able to associate mac address to the source port on source bridge where it was originaly learned.
+So we have written a code that is able to identify backbone ports and then able to associate mac address to the source port on source bridge where it was originally learned.
 So you have to consider the following, at the end the algorithm is able to make an association of bridge port with a set of "source mac addresses" as it understand that they are all connected to that port. By the nature of the algorithm it is possible that we can have this set of mac addresses associated to more then one bridgeport: this is understable especially considering that we can "miss" a device in the middle. In this case we save set of mac addresses for all the bridge port addressing to them.
 So to get links you must first of all get the backbone links between bridges, these are saved into bridgeBridgeLink table.
+
+[options="headers, autowidth"]
+|===
+| Name                      | OID                           | Description
+| _vtpVersion_              | `.1.3.6.1.4.1.9.9.46.1.1.1.0` | The version of VTP in use on the local system.
+                                                              A devicewill report its version capability and not any particular version in use on the device.
+                                                              If the device does not support _VTP_, the version is _none(3)_.
+| _ipNetToMediaIfIndex_     | `.1.3.6.1.2.1.4.22.1.1`       |
+| _ipNetToMediaPhysAddress_ | `.1.3.6.1.2.1.4.22.1.2`       |
+| _ipNetToMediaNetAddress_  | `.1.3.6.1.2.1.4.22.1.3`       |
+| _ipNetToMediaType_        | `.1.3.6.1.2.1.4.22.1.4`       | The type of mapping.
+                                                              Setting this object to the value _invalid(2)_ has the effect of invalidating the corresponding entry in the _ipNetToMediaTable_.
+                                                              That is, it effectively dissasociates the interface identified with said entry from the mapping identified with said entry.
+                                                              It is an implementation-specific matter as to whether the agent removes an invalidated entry from the table.
+                                                              Accordingly, management stations must be prepared to receive tabular information from agents that corresponds to entries not currently in use.
+                                                              Proper interpretation of such entries requires examination of the relevant _ipNetToMediaType_ object.
+|===
 
 [source, sql]
 ----
@@ -39,10 +56,20 @@ Indexes:
 Foreign-key constraints:
 "fk_bridgebridgelink_designatednodeid" FOREIGN KEY (designatednodeid) REFERENCES node(nodeid) ON DELETE CASCADE
 "fk_bridgebridgelink_nodeid" FOREIGN KEY (nodeid) REFERENCES node(nodeid) ON DELETE CASCADE
+----
+
 These links are saved as one direction link from node to designated node.
 the quety here is simply:
+
+[source, sql]
+----
 select * from bridgebridgelink;
+----
+
 Once you got the backbone links you must get the mac links. This are saved in the database table bridgeMacLink
+
+[source, sql]
+----
 opennms=# \d bridgeMacLink
 Table "public.bridgemaclink"
 Column | Type | Modifiers
@@ -88,4 +115,4 @@ Foreign-key constraints:
 "fk_ipnettomedia_sourcenodeid" FOREIGN KEY (sourcenodeid) REFERENCES node(nodeid) ON DELETE CASCADE
 ----
 
-Duplicated ipaddress or d uplicated mac address will lead with this query to fake links.
+Duplicated ipaddress or duplicated mac address will lead with this query to fake links.
