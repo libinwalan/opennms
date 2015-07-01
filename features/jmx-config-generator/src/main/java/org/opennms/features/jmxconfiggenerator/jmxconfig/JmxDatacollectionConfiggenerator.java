@@ -85,14 +85,14 @@ public class JmxDatacollectionConfiggenerator {
     private static NameCutter nameCutter = new NameCutter();
 
     static {
-        // Domanis directly from JVMs
+        // Domains directly from JVMs
         standardVmBeans.add("JMImplementation");
         standardVmBeans.add("com.sun.management");
         standardVmBeans.add("java.lang");
         standardVmBeans.add("java.nio");
         standardVmBeans.add("java.util.logging");
 
-        // valid numbertyps
+        // valid number types
         numbers.add("int");
         numbers.add("long");
         numbers.add("double");
@@ -139,10 +139,7 @@ public class JmxDatacollectionConfiggenerator {
                     logger.info("domain: " + domainName);
 
                     // for all mBeans of the actual domain
-                    for (ObjectInstance jmxObjectInstance : mBeanServerConnection.queryMBeans(new ObjectName(
-                                                                                                             domainName
-                                                                                                                     + ":*"),
-                                                                                              null)) {
+                    for (ObjectInstance jmxObjectInstance : mBeanServerConnection.queryMBeans(new ObjectName(domainName + ":*"), null)) {
                         Mbean xmlMbean = xmlObjectFactory.createMbean();
                         xmlMbean.setObjectname(jmxObjectInstance.getObjectName().toString());
                         String typeAndOthers = StringUtils.substringAfterLast(jmxObjectInstance.getObjectName().getCanonicalName(),
@@ -243,63 +240,13 @@ public class JmxDatacollectionConfiggenerator {
         return xmlJmxDatacollectionConfig;
     }
 
-    public MBeanServerConnection createMBeanServerConnection(
-            JMXConnector jmxConnector) throws IOException {
+    public MBeanServerConnection createMBeanServerConnection(JMXConnector jmxConnector) throws IOException {
         MBeanServerConnection jmxServerConnection = jmxConnector.getMBeanServerConnection();
         logger.debug("jmxServerConnection: '{}'", jmxServerConnection);
         logger.debug("count: " + jmxServerConnection.getMBeanCount());
         return jmxServerConnection;
     }
 
-    /**
-     * This method gets the JmxConnector to connect with the given
-     * jmxServiceURL.
-     * 
-     * @param username
-     *            may be null
-     * @param password
-     *            may be null
-     * @param jmxServiceURL
-     *            should not be null!
-     * @return a jmxConnector
-     * @throws IOException
-     *             if the connection to the given jmxServiceURL fails (e.g.
-     *             authentication failure or not reachable)
-     */
-    public JMXConnector getJmxConnector(String username, String password,
-            JMXServiceURL jmxServiceURL) throws IOException {
-        JMXConnector jmxConnector;
-        HashMap<String, String[]> env = new HashMap<String, String[]>();
-
-        if (username != null && password != null) {
-            String[] credentials = new String[] { username, password };
-            env.put("jmx.remote.credentials", credentials);
-        }
-
-        jmxConnector = JMXConnectorFactory.connect(jmxServiceURL, env);
-        jmxConnector.connect();
-
-        return jmxConnector;
-    }
-
-    /**
-     * determines the jmxServiceUrl depending on jmxmp.
-     * 
-     * @param jmxmp
-     * @param hostName
-     * @param port
-     * @return
-     * @throws MalformedURLException
-     */
-    public JMXServiceURL getJmxServiceURL(Boolean jmxmp, String hostName,
-            String port) throws MalformedURLException {
-        if (jmxmp) {
-            return new JMXServiceURL("service:jmx:jmxmp://" + hostName + ":"
-                    + port);
-        }
-        return new JMXServiceURL("service:jmx:rmi:///jndi/rmi://" + hostName
-                + ":" + port + "/jmxrmi");
-    }
 
     public void writeJmxConfigFile(
             JmxDatacollectionConfig jmxDatacollectionConfigModel,

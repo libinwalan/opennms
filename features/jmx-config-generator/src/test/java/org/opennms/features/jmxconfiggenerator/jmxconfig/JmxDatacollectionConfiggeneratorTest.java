@@ -28,18 +28,6 @@
 
 package org.opennms.features.jmxconfiggenerator.jmxconfig;
 
-import org.opennms.features.jmxconfiggenerator.jmxconfig.JmxDatacollectionConfiggenerator;
-import java.io.IOException;
-import java.lang.management.ManagementFactory;
-import java.net.MalformedURLException;
-import java.util.HashMap;
-import java.util.Map;
-import javax.management.MBeanServer;
-import javax.management.MBeanServerConnection;
-import javax.management.ObjectName;
-import javax.management.remote.JMXConnector;
-import javax.management.remote.JMXServiceURL;
-
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -47,6 +35,14 @@ import org.junit.Test;
 import org.opennms.xmlns.xsd.config.jmx_datacollection.JmxDatacollectionConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.management.MBeanServer;
+import javax.management.ObjectName;
+import java.io.IOException;
+import java.lang.management.ManagementFactory;
+import java.net.MalformedURLException;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * @author Simon Walter <simon.walter@hp-factory.de>
@@ -113,13 +109,13 @@ public class JmxDatacollectionConfiggeneratorTest {
     //@Test
     public void testGenerateJmxConfigJmxMp() throws MalformedURLException, IOException {
     	
-    	JMXServiceURL url = jmxConfiggenerator.getJmxServiceURL(false, "connect.opennms-edu.net", "9998");
-    	JMXConnector jmxConnector = jmxConfiggenerator.getJmxConnector(null, null, url);
-        MBeanServerConnection mBeanServerConnection = jmxConfiggenerator.createMBeanServerConnection(jmxConnector);
-        logger.debug("MBeanServerConnection: '{}'",mBeanServerConnection);
-        JmxDatacollectionConfig jmxConfigModel = jmxConfiggenerator.generateJmxConfigModel(mBeanServerConnection, "RemoteRepository", true, true, dictionary);
-        Assert.assertEquals(1, jmxConfigModel.getJmxCollection().size());
-        Assert.assertEquals(35, jmxConfigModel.getJmxCollection().get(0).getMbeans().getMbean().size());
-        Assert.assertEquals("org.apache.cassandra.internal.MemtablePostFlusher", jmxConfigModel.getJmxCollection().get(0).getMbeans().getMbean().get(0).getName());
+    	//JMXServiceURL url = jmxConfiggenerator.getJmxServiceURL(false, "connect.opennms-edu.net", "9998");
+    	//JMXConnector jmxConnector = jmxConfiggenerator.getJmxConnector(null, null, url);
+        //MBeanServerConnection mBeanServerConnection = jmxConfiggenerator.createMBeanServerConnection(jmxConnector);
+        //logger.debug("MBeanServerConnection: '{}'",mBeanServerConnection);
+        //JmxDatacollectionConfig jmxConfigModel = jmxConfiggenerator.generateJmxConfigModel(mBeanServerConnection, "RemoteRepository", true, true, dictionary);
+        //Assert.assertEquals(1, jmxConfigModel.getJmxCollection().size());
+        //Assert.assertEquals(35, jmxConfigModel.getJmxCollection().get(0).getMbeans().getMbean().size());
+        //Assert.assertEquals("org.apache.cassandra.internal.MemtablePostFlusher", jmxConfigModel.getJmxCollection().get(0).getMbeans().getMbean().get(0).getName());
     }
 }
