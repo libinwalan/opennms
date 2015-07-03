@@ -2183,6 +2183,7 @@ create table cdpElement (
       nodeid          integer not null,
       cdpGlobalRun    integer not null,
       cdpGlobalDeviceId text not null,
+      cdpGlobalDeviceIdFormat integer,
       cdpNodeCreateTime	timestamp not null,
       cdpNodeLastPollTime	timestamp not null,
       constraint pk_cdpelement_id primary key (id),
